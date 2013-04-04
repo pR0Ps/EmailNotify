@@ -70,7 +70,9 @@ A condition is a regular expression that is matched against the provided argumen
 
 The condition is considered to be met if the arguments match the regular expression, OR if the condition is null.
 
-Example: `".*\.dat$"`
+Note that JSON uses the `\` character to designate escape sequences. If the backslash character is needed in your condition (or anywhere else), use `\\`.
+
+Example: `".*\\.dat$"`
 
 Items
 -----
@@ -89,7 +91,7 @@ Example:
 ```json
 "items":{
     "all":        [null, "general"],
-    "datafiles":  [[null, ".*\.dat$"], "data"],
+    "datafiles":  [[null, ".*\\.dat$"], "data"],
     "moviefiles": [["Label_movie"], "movie"],
     "musicfiles": [["Label_music"], "music"]
 }
@@ -134,7 +136,7 @@ Configuration file
     },
     "items":{
         "all":        [null, "general"],
-        "datafiles":  [[null, ".*\.dat$"], "data"],
+        "datafiles":  [[null, ".*\\.dat$"], "data"],
         "moviefiles": [["Label_movie"], "movie"],
         "musicfiles": [["Label_music"], "music"]
     },
