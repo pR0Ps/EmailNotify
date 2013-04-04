@@ -3,8 +3,15 @@
 import json
 import sys
 import logging
+import string
+import re
 
 CONFIG_FILE = "config.dat"
+ARG_PLACEHOLDER = "[NO DATA]"
+
+
+class ConfigError(Exception):
+    pass
 
 class Template(object):
     """Represents a template"""
@@ -13,9 +20,33 @@ class Template(object):
         self.subject = subject
         self.contents = contents
 
+        self._check_valid()
+
+    def _check_valid(self):
+        """
+        Determines if the template is a valid.
+        Templates can only have numbers as placeholders.
+        """
+        for x in string.Formatter().parse(self.contents):
+            #x[1] is the name of each placeholder
+            if x[1]:
+                try:
+                    int(x[1])
+                except ValueError:
+                    raise ConfigError("Invalid placeholder '{{{0}}}' in template contents".format(x[1]))
+
+    def _num_placeholders(self):
+        """Returns the number of placeholders needed to fill in the template"""
+        return max({int(x[1]) for x in string.Formatter().parse(self.contents) if x[1]}) + 1
+
     def get_filled(self, args):
         """Returns the filled out template"""
-        #TODO: error handling
+        num = self._num_placeholders()
+
+        #Extend the args to match the nmber of placeholders
+        if len(args) < num:
+            args.extend((num - len(args)) * [ARG_PLACEHOLDER])
+
         return self.contents.format(args)
 
 class Item(object):
@@ -23,13 +54,33 @@ class Item(object):
 
     def __init__(self, id_, conditions, template):
         self.id_ = id_
-        self.conditions = conditions
         self.template = template
+        
+        #convert the conditions to regex objects
+        self.conditions = []
+        if conditions:
+            for x in conditions:
+                if not x:
+                    self.conditions.append(None)
+                else:
+                    try:
+                        self.conditions.append(re.compile(x))
+                    except Exception as e:
+                        raise ConfigError("Invalid condition '{0}' in item contents ({1})".format(x, e))
 
     def does_match(self, args):
         """Returns true if this item matches the arguments"""
-        #TODO: logic
-        return False
+
+        #Less args than conditions, can't match
+        if len(args) < len(self.conditions):
+            return False
+
+        #Check the conditions
+        for x in range(len(self.conditions)):
+            if self.conditions and not self.conditions[i].match(args[i]):
+                return False
+        
+        return True
 
     def get_template(self, args):
         """
@@ -95,17 +146,22 @@ def build_structure(config):
     #build templates
     templates = {}
     for key, val in config["templates"].items():
-        templates[key] = Template(*val)
+        try:
+            templates[key] = Template(*val)
+        except ConfigError as e:
+            logging.warn("Problem with config file - {0}. Skipping template '{1}'".format(e, key))
 
     #build items
     items = {}
     for key, val in config["items"].items():
         try:
             tmpl = templates[val[1]]
+            items[key] = Item(key, val[0], tmpl)
         except KeyError as e:
-            logging.warn("Problem with config file - invalid template '{0}'. Skipping item '{1}'...".format(val[1], key))
+            logging.warn("Problem with config file - Invalid template '{0}'. Skipping item '{1}'".format(val[1], key))
             continue
-        items[key] = Item(key, val[0], tmpl)
+        except ConfigError as e:
+            logging.warn("Problem with config file - {0}. Skipping item '{1}'".format(e, key))
 
     #build users
     users = {}
@@ -115,7 +171,7 @@ def build_structure(config):
             try:
                 user_items.append(items[i])
             except KeyError as e:
-                logging.warn("Problem with config file - invalid item '{0}' for user '{1}'".format(i, key))
+                logging.warn("Problem with config file - Invalid item '{0}' for user '{1}'".format(i, key))
         users[key] = User(user_items) 
     
     return users

@@ -43,7 +43,7 @@ Example:
 
 Templates
 ---------
-A template gets filled in using the arguments passed to progream, then emailed to users.
+A template gets filled in using the arguments passed to program, then emailed to users.
 
 
 Numbers wrapped in curly braces (`{}`) will be replaced with the corresponding argument.
