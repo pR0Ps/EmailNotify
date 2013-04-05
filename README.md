@@ -68,7 +68,7 @@ Config example:
 
 Template file example (`templates/general.html`):
 ```html
-General: '{0}':</br><em>{1}</em>, <b>{2}</b>
+General: '{0}': <em>{1}</em>, <b>{2}</b>
 ```
 
 Conditions
@@ -159,7 +159,7 @@ Template files
 --------------
 `general.html`:
 ```html
-General: '{0}':</br><em>{1}</em>, <b>{2}</b>
+General: '{0}': <em>{1}</em>, <b>{2}</b>
 ```
 
 `data.html`:
@@ -181,22 +181,22 @@ Results
 -------
 *    `./emailNotify.py "n/a" "testing.dat" "/home/test/testing.dat"`
     *    test1@example.com:
-        *    Subject: "Incoming Datafile"
-        *    Contents: "Data in file: '/home/test/testing.dat'"
+        *    Subject: Incoming Datafile
+        *    Contents: Data in file: '/home/test/testing.dat'
     *    test2@example.com:
-        *    Subject: "Incoming Notification"
-        *    Contents: "General: 'n/a':</br><em>testing.dat</em>, <b>/home/test/testing.dat</b>"
+        *    Subject: Incoming Notification
+        *    Contents: General: 'n/a': <em>testing.dat</em>, <b>/home/test/testing.dat</b>
 
 *    `./emailNotify.py "Label_movie" "My movie" "/home/test/video.mkv"`
     *    test1@example.com: Not sent an email.
     *    test2@example.com:
-        *    Subject: "Incoming Movie (My Movie)"
-        *    Contents: "Movie called 'My Movie' at '/home/test/video.mkv'"
+        *    Subject: Incoming Movie (My Movie)
+        *    Contents: Movie called 'My Movie' at '/home/test/video.mkv'
 
 *    `./emailNotify.py "Label_music" "My Song" "/home/test/music.mp3"`
     *    test1@example.com:
-        *    Subject: "Incoming Music (My Song)"
-        *    Contents: "Music called 'My Song' at '/home/test/testing.dat'"
+        *    Subject: Incoming Music (My Song)
+        *    Contents: Music called 'My Song' at '/home/test/testing.dat'
     *    test2@example.com:
-        *    Subject: "Incoming Notification"
-        *    Contents: "General: 'Label_music':</br><em>My Song</em>, <b>/home/test/music.mp3</b>"
+        *    Subject: Incoming Notification
+        *    Contents: General: 'Label_music': <em>My Song</em>, <b>/home/test/music.mp3</b>
