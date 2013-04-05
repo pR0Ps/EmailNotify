@@ -47,23 +47,28 @@ Templates
 ---------
 A template gets filled in using the arguments passed to program, then emailed to users.
 
+Due to their length, the contents of the templates are stored in individual files in the `templates` subdirectory.
 
-Numbers wrapped in curly braces (`{}`) in the subject or contents will be replaced with the corresponding argument.
+Formatting:
+*	Numbers wrapped in curly braces (`{}`) in the subject or contents will be replaced with the corresponding argument.
+*	For example, a template of `{0} - {2} - {1}` becomes `a - c - b` when given arguments of `a b c`.
+*	If there aren't enough arguments, the string `[NO DATA]` is substituted.
 
-For example, a template of `{0} - {2} - {1}` becomes `a - c - b` when given arguments of `a b c`.
+A template config has the format `id: [email_subject, template_file]`
 
-If there aren't enough arguments, the string `[NO DATA]` is substituted.
-
-A template config has the format `id: [email_subject, email_contents]`
-
-Example:
+Config example:
 ```json
 "templates":{
-    "general": ["Incoming Notification", "General: '{0}', '{1}', '{2}'"],
-    "data":    ["Incoming Datafile", "Data in file '{2}'"],
-    "movie":   ["Incoming Movie ({1})", "Movie called '{1}' at '{2}'"],
-    "music":   ["Incoming Music ({1})", "Music called '{1}' at '{2}'"]
+    "general": ["Incoming Notification", "general.html"],
+    "data":    ["Incoming Datafile", "data.html"],
+    "movie":   ["Incoming Movie ({1})", "movie.html"],
+    "music":   ["Incoming Music ({1})", "music.html"]
 }
+```
+
+Template file example (`templates/general.html`):
+```html
+General: '{0}':</br><em>{1}</em>, <b>{2}</b>
 ```
 
 Conditions
@@ -132,10 +137,10 @@ Configuration file
         "fr_name": "Notifications"
     },
     "templates":{
-        "general": ["Incoming Notification", "General: '{0}', '{1}', '{2}'"],
-        "data":    ["Incoming Datafile", "Data in file '{2}'"],
-        "movie":   ["Incoming Movie ({1})", "Movie called '{1}' at '{2}'"],
-        "music":   ["Incoming Music ({1})", "Music called '{1}' at '{2}'"]
+        "general": ["Incoming Notification", "general.html"],
+        "data":    ["Incoming Datafile", "data.html"],
+        "movie":   ["Incoming Movie ({1})", "movie.html"],
+        "music":   ["Incoming Music ({1})", "music.html"]
     },
     "items":{
         "all":        [null, "general"],
@@ -150,6 +155,28 @@ Configuration file
 }
 ```
 
+Template files
+--------------
+`general.html`:
+```html
+General: '{0}':</br><em>{1}</em>, <b>{2}</b>
+```
+
+`data.html`:
+```html
+Data in file '{2}'
+```
+
+`movie.html`:
+```html
+Movie called '{1}' at '{2}'
+```
+
+`music.html`:
+```html
+Music called '{1}' at '{2}'
+```
+
 Results
 -------
 *    `./emailNotify.py "n/a" "testing.dat" "/home/test/testing.dat"`
@@ -158,7 +185,7 @@ Results
         *    Contents: "Data in file: '/home/test/testing.dat'"
     *    test2@example.com:
         *    Subject: "Incoming Notification"
-        *    Contents: "General: 'n/a', 'testing.dat', '/home/test/testing.dat'"
+        *    Contents: "General: 'n/a':</br><em>testing.dat</em>, <b>/home/test/testing.dat</b>"
 
 *    `./emailNotify.py "Label_movie" "My movie" "/home/test/video.mkv"`
     *    test1@example.com: Not sent an email.
@@ -172,4 +199,4 @@ Results
         *    Contents: "Music called 'My Song' at '/home/test/testing.dat'"
     *    test2@example.com:
         *    Subject: "Incoming Notification"
-        *    Contents: "General: 'Label_music', 'My Song', '/home/test/music.mp3'"
+        *    Contents: "General: 'Label_music':</br><em>My Song</em>, <b>/home/test/music.mp3</b>"

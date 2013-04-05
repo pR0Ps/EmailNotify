@@ -5,11 +5,13 @@ import sys
 import logging
 import string
 import re
+import os
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
 CONFIG_FILE = "config.dat"
+TEMPLATE_DIR = "templates"
 ARG_PLACEHOLDER = "[NO DATA]"
 
 class ConfigError(Exception):
@@ -18,12 +20,21 @@ class ConfigError(Exception):
 class Template(object):
     """Represents a template"""
 
-    def __init__(self, id_, subject, contents):
+    def __init__(self, id_, subject, filename):
         self.id_ = id_
         self.subject = subject
-        self.contents = contents
 
+        self._load_file(filename)
         self._check_valid()
+
+    def _load_file(self, filename):
+        """Loads the contents of the template file"""
+        try:
+            path = os.path.join(TEMPLATE_DIR, filename)
+            with open (path, "r") as f:
+                self.contents = f.read()
+        except EnvironmentError as e:
+            raise ConfigError("Couldn't load template '{0}': {1}".format(self.id_, e))
 
     def _check_valid(self):
         """
@@ -235,10 +246,9 @@ def send_email(conf, items, args):
         msg = MIMEMultipart('alternative')
         msg["Subject"] = subject
         msg["From"] = "{0} <{1}>".format(conf["fr_name"], conf["fr_addr"])
-        msg["Bcc"] = ", ".join(emails)
         msg.attach(MIMEText(text.encode('utf-8'), 'html', _charset='utf-8'))
 
-        logging.info("Sending template '{0}' to '{1}'...".format(item.template.id_, msg["Bcc"]))
+        logging.info("Sending template '{0}' to '{1}'...".format(item.template.id_, ", ".join(emails)))
 
         try:
             server.sendmail(conf["fr_addr"], emails, msg.as_string())
