@@ -5,10 +5,12 @@ import sys
 import logging
 import string
 import re
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 CONFIG_FILE = "config.dat"
 ARG_PLACEHOLDER = "[NO DATA]"
-
 
 class ConfigError(Exception):
     pass
@@ -16,7 +18,8 @@ class ConfigError(Exception):
 class Template(object):
     """Represents a template"""
 
-    def __init__(self, subject, contents):
+    def __init__(self, id_, subject, contents):
+        self.id_ = id_
         self.subject = subject
         self.contents = contents
 
@@ -41,13 +44,16 @@ class Template(object):
 
     def get_filled(self, args):
         """Returns the filled out template"""
-        num = self._num_placeholders()
+        to_add = self._num_placeholders() - len(args)
+
+        temp_args = args[:]
 
         #Extend the args to match the nmber of placeholders
-        if len(args) < num:
-            args.extend((num - len(args)) * [ARG_PLACEHOLDER])
+        if to_add > 0:
+            logging.warning("Inserting placeholder '{0}' into template '{1}' ({2} too few arguments provided).".format(ARG_PLACEHOLDER, self.id_, to_add))
+            temp_args.extend(to_add * [ARG_PLACEHOLDER])
 
-        return self.contents.format(args)
+        return self.contents.format(*temp_args)
 
 class Item(object):
     """Represents an item"""
@@ -85,24 +91,14 @@ class Item(object):
         
         return True
 
-    def get_template(self, args):
-        """
-        Returns the filled out template for this item.
-        Returns None if the conditions don't match the args.
-        """
-        if self.does_match(args):
-            return template.get_filled(args)
-        return None
-
     def __eq__(self, other):
         return self.id_ == other.id_
 
     def __ne__(self, other):
         return not self.__eq__(other)
 
-    def __repr__(self):
-        return "{0}: {1}".format(self.id_, self.conditions)
-
+    def __hash__(self):
+        return hash(self.id_)
 
 class User(object):
     """Represents a user"""
@@ -112,9 +108,9 @@ class User(object):
 
     def get_match(self, args):
         """Returns the first item to match the args (or None)."""
-        for x in self.items:
-            if x.does_match(args):
-                return x
+        for item in self.items:
+            if item.does_match(args):
+                return item
         return None
 
 def build_structure(config):
@@ -122,15 +118,21 @@ def build_structure(config):
     Builds the data structure.
     Returns a list of users.
     """
+    
+    logging.info("Building data structure...")
+    
+
     #build templates
+    logging.info("Building templates...")
     templates = {}
     for id_, data in config["templates"].items():
         try:
-            templates[id_] = Template(*data)
+            templates[id_] = Template(id_, *data)
         except ConfigError as e:
             logging.warn("Problem with config file - {0}. Skipping template '{1}'".format(e, id_))
 
     #build items
+    logging.info("Building items...")
     items = {}
     for id_, data in config["items"].items():
         try:
@@ -142,6 +144,7 @@ def build_structure(config):
             logging.warn("Problem with config file - {0}. Skipping item '{1}'".format(e, id_))
 
     #build users
+    logging.info("Building users...")
     users = {}
     for email, item_ids in config["users"].items():
         user_items = []
@@ -150,65 +153,141 @@ def build_structure(config):
                 user_items.append(items[item_id])
             except KeyError as e:
                 logging.warn("Problem with config file - Invalid item '{0}' for user '{1}'".format(item_id, email))
-        users[email] = User(user_items) 
+        
+        if len(set(user_items)) != len(user_items):
+            logging.warn("Problem with config file - Duplicate items for user '{0}'".format(email))
+        
+        users[email] = User(user_items)
+
     
     return users
 
 def load_config():
     """
     Load configuration data.
-    Returns a dictionary of User objects.
+    Returns a dictionary representation of the config file.
+    Does basic error checking.
     """
+    logging.info("Loading the configuration file...")
+
     try:
         with open (CONFIG_FILE, "r") as f:
             config = json.load(f)
-            return build_structure(config)
+
+            #Check all sections are present
+            if not all(k in config for k in ("server", "templates", "items", "users")):
+                logging.critical("Incomplete configuration file")
+                return None
+            
+            #check all server options are present
+            if not all(k in config["server"] for k in ("smtp", "user", "pass", "port", "ssl", "tls", "fr_addr", "fr_name")):
+                logging.critical("Incomplete server configuration")
+                return None
+
+            return config
     except EnvironmentError as e:
         logging.critical("Couldn't open config file, does it exist? {0}".format(e))
     except ValueError as e:
         logging.critical("Couldn't parse JSON, check the config file: {0}".format(e))
     return None
 
-
-def send_email(server_conf, people, template, args):
+def send_email(conf, items, args):
     """Sends the email"""
-    #TODO: create message, add data, send it
-    pass
+
+    #Log into the SMTP server
+    logging.info("Logging into the SMTP server...")
+
+    try:
+        if conf["ssl"]:
+            server = smtplib.SMTP_SSL(conf["smtp"], conf["port"])
+        else:
+            server = smtplib.SMTP(conf["smtp"], conf["port"])
+    except (EnvironmentError, smtplib.SMTPException) as e:
+        logging.critical("Couldn't make a connection to the SMTP server: {0}".format(e))
+        return
+
+    if conf["user"] and conf["pass"]:
+        if conf["tls"]:
+            server.ehlo()
+            server.starttls()
+            server.ehlo()
+
+        try:
+            server.login(conf["user"], conf["pass"])
+        except smtplib.SMTPException as e:
+            logging.critical("Couldn't log into the SMTP server: {0}".format(e.args[1]))
+            return
+
+    logging.info("Sending email(s)...")
+    
+    for item, emails in items.items():
+
+        text = item.template.get_filled(args)
+        subject = item.template.subject
+
+        msg = MIMEMultipart('alternative')
+        msg["Subject"] = subject
+        msg["From"] = "{0} <{1}>".format(conf["fr_name"], conf["fr_addr"])
+        msg["Bcc"] = ", ".join(emails)
+        msg.attach(MIMEText(text.encode('utf-8'), 'html', _charset='utf-8'))
+
+        logging.info("Sending template '{0}' to '{1}'...".format(item.template.id_, msg["Bcc"]))
+
+        try:
+            #server.sendmail(conf["fr_addr"], emails, msg.as_string())
+            logging.info("Sent!")
+        except smtplib.SMTPException as e:
+            logging.warning ("Error while sending: {1}".format(e.args[1]))
+            continue
+
+
+    logging.info("Finished sending emails")
+    server.quit()
 
 def process_args(users, args):
-    """Figures out which emails to send to which people"""
+    """
+    Figures out which emails to send to which people.
+    Returns a dictionary containing a list of users to email
+    with the keys being the item that matched.
+    """
+
+    logging.info("Determining which emails to send to which users...")
+
+    to_send = {}
+
     for email, user in users.items():
         item = user.get_match(args)
-
-        #Debug
         if item:
-            print (email + ":" + item.template.subject)
+            if not item in to_send:
+                to_send[item] = []
 
+            to_send[item].append(email)
+
+    return to_send
         
 
 def main():
     """Entry point of the program"""
-    logging.basicConfig(format="[%(asctime)s][%(levelname)s][in %(funcName)s]: %(message)s", level=logging.DEBUG)
+
+    logging.basicConfig(format="[%(asctime)s][%(levelname)s]: %(message)s", level=logging.DEBUG)
 
     if len(sys.argv) == 1:
-        #TODO: print help
+        print ("EmailNotify by pR0Ps")
+        print ("See README.md for usage instructions")
         return
 
-    users = load_config()
-    if not users:
+    args = sys.argv[1:]
+    config = load_config()
+    
+    if not config:
         logging.critical("Couldn't load config, exiting")
         return
 
-    #Debug
-    for email, user in users.items():
-        print (email, str(user.items))
-        for item in user.items:
-            print (str(item.template))
+    users = build_structure(config)
+    to_send = process_args(users, args)
 
-    process_args(users, sys.argv[1:])
+    send_email(config["server"], to_send, args)
         
 
 if __name__ == '__main__':
     main()
-
-

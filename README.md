@@ -24,7 +24,8 @@ The following parameters need to be configured:
 *    `user`: The username to log in with.
 *    `pass`: The password for the above username.
 *    `port`: The port to use.
-*    `ssl`:  Use SSL to deliver message? (true/false)
+*    `ssl`:  Use SSL to deliver the message? (true/false)
+*    `tls`:  Use TLS to encrypt the  message? (true/false)
 *    `fr_addr`: The address the email will send from.
 *    `fr_name`: The name the email will report.
 
@@ -36,6 +37,7 @@ Example:
     "pass":    "password",
     "port":    465,
     "ssl":     true,
+    "tls":     false,
     "fr_addr": "notifybot@example.com",
     "fr_name": "Notifications"
 }
@@ -125,6 +127,7 @@ Configuration file
         "pass":    "password",
         "port":    465,
         "ssl":     true,
+        "tls":     false,
         "fr_addr": "notifybot@example.com",
         "fr_name": "Notifications"
     },
