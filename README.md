@@ -48,7 +48,7 @@ Templates
 A template gets filled in using the arguments passed to program, then emailed to users.
 
 
-Numbers wrapped in curly braces (`{}`) will be replaced with the corresponding argument.
+Numbers wrapped in curly braces (`{}`) in the subject or contents will be replaced with the corresponding argument.
 
 For example, a template of `{0} - {2} - {1}` becomes `a - c - b` when given arguments of `a b c`.
 
@@ -61,8 +61,8 @@ Example:
 "templates":{
     "general": ["Incoming Notification", "General: '{0}', '{1}', '{2}'"],
     "data":    ["Incoming Datafile", "Data in file '{2}'"],
-    "movie":   ["Incoming Movie", "Movie called '{1}' at '{2}'"],
-    "music":   ["Incoming Music", "Music called '{1}' at '{2}'"]
+    "movie":   ["Incoming Movie ({1})", "Movie called '{1}' at '{2}'"],
+    "music":   ["Incoming Music ({1})", "Music called '{1}' at '{2}'"]
 }
 ```
 
@@ -134,8 +134,8 @@ Configuration file
     "templates":{
         "general": ["Incoming Notification", "General: '{0}', '{1}', '{2}'"],
         "data":    ["Incoming Datafile", "Data in file '{2}'"],
-        "movie":   ["Incoming Movie", "Movie called '{1}' at '{2}'"],
-        "music":   ["Incoming Music", "Music called '{1}' at '{2}'"]
+        "movie":   ["Incoming Movie ({1})", "Movie called '{1}' at '{2}'"],
+        "music":   ["Incoming Music ({1})", "Music called '{1}' at '{2}'"]
     },
     "items":{
         "all":        [null, "general"],
@@ -163,12 +163,12 @@ Results
 *    `./emailNotify.py "Label_movie" "My movie" "/home/test/video.mkv"`
     *    test1@example.com: Not sent an email.
     *    test2@example.com:
-        *    Subject: "Incoming Movie"
+        *    Subject: "Incoming Movie (My Movie)"
         *    Contents: "Movie called 'My Movie' at '/home/test/video.mkv'"
 
 *    `./emailNotify.py "Label_music" "My Song" "/home/test/music.mp3"`
     *    test1@example.com:
-        *    Subject: "Incoming Music"
+        *    Subject: "Incoming Music (My Song)"
         *    Contents: "Music called 'My Song' at '/home/test/testing.dat'"
     *    test2@example.com:
         *    Subject: "Incoming Notification"

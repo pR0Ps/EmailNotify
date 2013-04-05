@@ -30,30 +30,33 @@ class Template(object):
         Determines if the template is a valid.
         Templates can only have numbers as placeholders.
         """
-        for x in string.Formatter().parse(self.contents):
-            #x[1] is the name of each placeholder
-            if x[1]:
+        for i in range(2):
+            for x in string.Formatter().parse((self.subject, self.contents)[i]):
+                #x[1] is the name of each placeholder
                 try:
                     int(x[1])
                 except ValueError:
-                    raise ConfigError("Invalid placeholder '{{{0}}}' in template contents".format(x[1]))
+                    raise ConfigError("Invalid placeholder '{{{0}}}' in template {1}".format(x[1], ("subject", "contents")[i]))
+                except TypeError:
+                    #x[1] is None, this is fine
+                    pass
 
     def _num_placeholders(self):
         """Returns the number of placeholders needed to fill in the template"""
-        return max({int(x[1]) for x in string.Formatter().parse(self.contents) if x[1]}) + 1
+        return max({int(x[1]) for x in string.Formatter().parse(self.contents + self.subject) if x[1]}) + 1
 
     def get_filled(self, args):
-        """Returns the filled out template"""
+        """Returns the filled out template as a (subject, contents) tuple"""
         to_add = self._num_placeholders() - len(args)
 
         temp_args = args[:]
 
-        #Extend the args to match the nmber of placeholders
+        #Extend the args to match the number of placeholders
         if to_add > 0:
             logging.warning("Inserting placeholder '{0}' into template '{1}' ({2} too few arguments provided).".format(ARG_PLACEHOLDER, self.id_, to_add))
             temp_args.extend(to_add * [ARG_PLACEHOLDER])
 
-        return self.contents.format(*temp_args)
+        return (self.subject.format(*temp_args), self.contents.format(*temp_args))
 
 class Item(object):
     """Represents an item"""
@@ -194,6 +197,11 @@ def load_config():
 def send_email(conf, items, args):
     """Sends the email"""
 
+    #Check if actually sending anything
+    if not items:
+        logging.info("No emails to send")
+        return
+
     #Log into the SMTP server
     logging.info("Logging into the SMTP server...")
 
@@ -222,8 +230,7 @@ def send_email(conf, items, args):
     
     for item, emails in items.items():
 
-        text = item.template.get_filled(args)
-        subject = item.template.subject
+        subject, text = item.template.get_filled(args)
 
         msg = MIMEMultipart('alternative')
         msg["Subject"] = subject
@@ -234,7 +241,7 @@ def send_email(conf, items, args):
         logging.info("Sending template '{0}' to '{1}'...".format(item.template.id_, msg["Bcc"]))
 
         try:
-            #server.sendmail(conf["fr_addr"], emails, msg.as_string())
+            server.sendmail(conf["fr_addr"], emails, msg.as_string())
             logging.info("Sent!")
         except smtplib.SMTPException as e:
             logging.warning ("Error while sending: {1}".format(e.args[1]))
