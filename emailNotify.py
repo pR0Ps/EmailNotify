@@ -9,10 +9,19 @@ import os
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+html2text = None
 
 CONFIG_FILE = "config.dat"
 TEMPLATE_DIR = "templates"
 ARG_PLACEHOLDER = "[NO DATA]"
+
+VALID_H2T_OPTS = ("unicode_snob", "escape_snob", "links_each_paragraph", "body_width",
+                "skip_internal_links", "inline_links", "ignore_links","ignore_images",
+                "ignore_emphasis", "ul_item_mark", "emphasis_mark", "strong_mark")
+
+CONFIG_REQS = ("general", "server", "templates", "items", "users")
+CONFIG_GEN_REQS = ["gen_plaintext"]
+CONFIG_SERVER_REQS = ("smtp", "user", "pass", "port", "ssl", "tls", "fr_addr", "fr_name")
 
 class ConfigError(Exception):
     pass
@@ -189,12 +198,17 @@ def load_config():
             config = json.load(f)
 
             #Check all sections are present
-            if not all(k in config for k in ("server", "templates", "items", "users")):
+            if not all(k in config for k in CONFIG_REQS):
                 logging.critical("Incomplete configuration file")
                 return None
             
-            #check all server options are present
-            if not all(k in config["server"] for k in ("smtp", "user", "pass", "port", "ssl", "tls", "fr_addr", "fr_name")):
+            #Check all general options are present
+            if not all(k in config["general"] for k in CONFIG_GEN_REQS):
+                logging.critical("Incomplete general configuration")
+                return None
+            
+            #Check all server options are present
+            if not all(k in config["server"] for k in CONFIG_SERVER_REQS):
                 logging.critical("Incomplete server configuration")
                 return None
 
@@ -205,7 +219,21 @@ def load_config():
         logging.critical("Couldn't parse JSON, check the config file: {0}".format(e))
     return None
 
-def send_email(conf, items, args):
+def generate_plaintext(conf, html):
+    """Returns a plaintext version of the template"""
+
+    h = html2text.HTML2Text()
+
+    #Set a subset of relevant options for html2text parser
+    for opt in VALID_H2T_OPTS:
+        if opt in conf:
+            setattr(h, opt, conf[opt])
+
+    ret = h.handle(html)
+    logging.debug("Generated plaintext email:\n{0}".format(ret))
+    return ret
+
+def send_email(conf, server, items, args):
     """Sends the email"""
 
     #Check if actually sending anything
@@ -217,41 +245,45 @@ def send_email(conf, items, args):
     logging.info("Logging into the SMTP server...")
 
     try:
-        if conf["ssl"]:
-            server = smtplib.SMTP_SSL(conf["smtp"], conf["port"])
+        if server["ssl"]:
+            smtp_server = smtplib.SMTP_SSL(server["smtp"], server["port"])
         else:
-            server = smtplib.SMTP(conf["smtp"], conf["port"])
+            smtp_server = smtplib.SMTP(server["smtp"], server["port"])
     except (EnvironmentError, smtplib.SMTPException) as e:
         logging.critical("Couldn't make a connection to the SMTP server: {0}".format(e))
         return
 
-    if conf["user"] and conf["pass"]:
-        if conf["tls"]:
-            server.ehlo()
-            server.starttls()
-            server.ehlo()
+    if server["user"] and server["pass"]:
+        if server["tls"]:
+            smtp_server.ehlo()
+            smtp_server.starttls()
+            smtp_server.ehlo()
 
         try:
-            server.login(conf["user"], conf["pass"])
+            smtp_server.login(server["user"], server["pass"])
         except smtplib.SMTPException as e:
             logging.critical("Couldn't log into the SMTP server: {0}".format(e.args[1]))
             return
 
     logging.info("Sending email(s)...")
-    
+
     for item, emails in items.items():
 
         subject, text = item.template.get_filled(args)
 
         msg = MIMEMultipart('alternative')
         msg["Subject"] = subject
-        msg["From"] = "{0} <{1}>".format(conf["fr_name"], conf["fr_addr"])
+        msg["From"] = "{0} <{1}>".format(server["fr_name"], server["fr_addr"])
+        
+        #Add text - According to RFC 2046 the last attached part is preferred (HTML)
+        if conf["gen_plaintext"]:
+            msg.attach(MIMEText(generate_plaintext(conf, text).encode('utf-8'), 'plain', _charset='utf-8'))
         msg.attach(MIMEText(text.encode('utf-8'), 'html', _charset='utf-8'))
 
         logging.info("Sending template '{0}' to '{1}'...".format(item.template.id_, ", ".join(emails)))
 
         try:
-            server.sendmail(conf["fr_addr"], emails, msg.as_string())
+            smtp_server.sendmail(server["fr_addr"], emails, msg.as_string())
             logging.info("Sent!")
         except smtplib.SMTPException as e:
             logging.warning ("Error while sending: {1}".format(e.args[1]))
@@ -259,7 +291,7 @@ def send_email(conf, items, args):
 
 
     logging.info("Finished sending emails")
-    server.quit()
+    smtp_server.quit()
 
 def process_args(users, args):
     """
@@ -300,10 +332,18 @@ def main():
         logging.critical("Couldn't load config, exiting")
         return
 
+    if config["general"]["gen_plaintext"]:
+        try:
+            global html2text
+            import html2text
+        except ImportError as e:
+            logging.warning("Couldn't load 'html2text' module, no plaintext email will be generated")
+            config["general"]["gen_plaintext"] = False
+
     users = build_structure(config)
     to_send = process_args(users, args)
 
-    send_email(config["server"], to_send, args)
+    send_email(config["general"], config["server"], to_send, args)
         
 
 if __name__ == '__main__':
