@@ -39,7 +39,7 @@ class Template(object):
     def _load_file(self, filename):
         """Loads the contents of the template file"""
         try:
-            path = os.path.join(TEMPLATE_DIR, filename)
+            path = os.path.join(HOME_DIR, TEMPLATE_DIR, filename)
             with open (path, "r") as f:
                 self.contents = f.read()
         except EnvironmentError as e:
@@ -194,7 +194,7 @@ def load_config():
     logging.info("Loading the configuration file...")
 
     try:
-        with open (CONFIG_FILE, "r") as f:
+        with open (os.path.join(HOME_DIR, CONFIG_FILE), "r") as f:
             config = json.load(f)
 
             #Check all sections are present
@@ -347,4 +347,15 @@ def main():
         
 
 if __name__ == '__main__':
+    global HOME_DIR
+
+    try:
+        HOME_DIR = os.path.dirname(os.path.abspath(__file__))
+    except EnvironmentError as e:
+        print("WARNING: Couldn't get the directory the script is in: {0}".format(e))
+        HOME_DIR = "."
+        
+    #logging.basicConfig(filename=os.path.join(HOME_DIR, "EmailNotify.log"), format="[%(asctime)s][%(levelname)s]: %(message)s", level=logging.WARN)
+    logging.basicConfig(format="[%(asctime)s][%(levelname)s]: %(message)s", level=logging.DEBUG)
+    
     main()
