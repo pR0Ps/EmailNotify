@@ -20,33 +20,42 @@ General
 General program options
 
 The following options need to be configured:
-*    `gen_plaintext`: Generate and send a plaintext version of the template as well as the html version (true/false). (requres the [`html2text`](https://pypi.python.org/pypi/html2text) module)
+*    `gen_plaintext`: Generate and send a plaintext version of the template as well as the html version (`true`/`false`). (requres the [html2text](https://pypi.python.org/pypi/html2text) module)
 
 The following options are optional and only used if `gen_plaintext` is enabled:
-*    `unicode_snob`: Use Unicode characters instead of their ascii psuedo-replacements (true/false, default false).
-*    `escape_snob`: Escape all special characters (true/false, default false) Output is less readable, but avoids corner case formatting issues.
-*    `links_each_paragraph`: Put the links after each paragraph instead of at the end (true/false, default false).
-*    `body_width`: Wrap long lines at this position. 0 for no wrapping, default 78.
-*    `skip_internal_links`: Don't show internal links (`href="#local-anchor"`) (default true).
-*    `inline_links`: Use inline, rather than reference, formatting for images and links (default true).
-*    `ignore_links`: Ignore all anchor tags (default false).
-*    `ignore_images`: Ignore all imgage tags (default false).
-*    `ignore_emphasis`: Ignore all emphasis tags (default false).
+*    `unicode_snob`: Use Unicode characters instead of their ascii psuedo-replacements (default `false`).
+*    `escape_snob`: Escape all special characters (default `false`). Output is less readable, but avoids corner case formatting issues.
+*    `links_each_paragraph`: Put the links after each paragraph instead of at the end (default `false`).
+*    `body_width`: Wrap long lines at this position. `0` for no wrapping, default `78`.
+*    `skip_internal_links`: Don't show internal links (`href="#local-anchor"`) (default `true`).
+*    `inline_links`: Use inline, rather than reference, formatting for images and links (default `true`).
+*    `ignore_links`: Ignore all anchor tags (default `false`).
+*    `ignore_images`: Ignore all imgage tags (default `false`).
+*    `ignore_emphasis`: Ignore all emphasis tags (default `false`).
 *    `ul_item_mark`: The string to begin list items with (default `*`).
 *    `emphasis_mark`: The string to surround emphasized text with (default `_`).
 *    `strong_mark`: The string to surround bolded text with (default `**`).
+
+Example:
+```json
+"general":{
+    "gen_plaintext": true,
+    "body_width":    0,
+	"inline_links":  false
+}
+```
 
 Server
 --------------------
 The server section holds the data needed to actually send the email.
 
 The following options need to be configured:
-*    `smtp`: The SMTP server, gmail is smtp.gmail.com.
+*    `smtp`: The SMTP server, gmail is `smtp.gmail.com`.
 *    `user`: The username to log in with.
 *    `pass`: The password for the above username.
 *    `port`: The port to use.
-*    `ssl`:  Use SSL to deliver the message (true/false).
-*    `tls`:  Use TLS to encrypt the  message (true/false).
+*    `ssl`:  Use SSL to deliver the message (`true`/`false`).
+*    `tls`:  Use TLS to encrypt the  message (`true`/`false`).
 *    `fr_addr`: The address the email will send from.
 *    `fr_name`: The name the email will report.
 
@@ -147,6 +156,11 @@ Configuration file
 ------------------
 ```json
 {
+    "general":{
+        "gen_plaintext": true,
+        "body_width":    0,
+	    "inline_links":  false
+    },
     "server":{
         "smtp":    "smtp.example.com",
         "user":    "username",
