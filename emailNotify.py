@@ -39,8 +39,9 @@ class Template(object):
     def _load_file(self, filename):
         """Loads the contents of the template file"""
         try:
-            path = os.path.join(HOME_DIR, TEMPLATE_DIR, filename)
-            with open (path, "r") as f:
+            path = os.path.join(TEMPLATE_DIR, filename)
+            logging.debug("Loading template '{0}' from file '{1}'".format(self.id_, path))
+            with open (os.path.join(HOME_DIR, path), "r") as f:
                 self.contents = f.read()
         except EnvironmentError as e:
             raise ConfigError("Couldn't load template '{0}': {1}".format(self.id_, e))
@@ -50,13 +51,14 @@ class Template(object):
         Determines if the template is a valid.
         Templates can only have numbers as placeholders.
         """
+        logging.debug("Checking if template '{0}' is valid".format(self.id_))
         for i in range(2):
             for x in string.Formatter().parse((self.subject, self.contents)[i]):
                 #x[1] is the name of each placeholder
                 try:
                     int(x[1])
                 except ValueError:
-                    raise ConfigError("Invalid placeholder '{{{0}}}' in template {1}".format(x[1], ("subject", "contents")[i]))
+                    raise ConfigError("Invalid placeholder '{{{0}}}' in template {1}".format(x[1], ("subject", "file")[i]))
                 except TypeError:
                     #x[1] is None, this is fine
                     pass
@@ -67,7 +69,10 @@ class Template(object):
 
     def get_filled(self, args):
         """Returns the filled out template as a (subject, contents) tuple"""
-        to_add = self._num_placeholders() - len(args)
+        num = self._num_placeholders()
+        to_add = num - len(args)
+
+        logging.debug("Filling out template '{0}': {1} placeholder(s), {2} arg(s) provided".format(self.id_, num, len(args)))
 
         temp_args = args[:]
 
@@ -89,6 +94,8 @@ class Item(object):
 
     def _parse_conditions(self, conditions):
         """Converts the conditions to regex objects"""
+        logging.debug("Compiling conditions to regular expression objects")
+
         self.conditions = []
         if conditions:
             for x in conditions:
@@ -99,19 +106,32 @@ class Item(object):
                         self.conditions.append(re.compile(x))
                     except Exception as e:
                         raise ConfigError("Invalid condition '{0}' in item contents ({1})".format(x, e))
+
+        if not any(self.conditions):
+            logging.debug("No conditions found")
+            self.conditions = []
         
     def does_match(self, args):
         """Returns true if this item matches the arguments"""
+        
+        logging.debug("Checking if item matches. Conditions: {0} Args: {1}".format([p.pattern for p in self.conditions], args))
 
         #Less args than conditions, can't match
         if len(args) < len(self.conditions):
+            logging.debug("Item doesn't match - more conditions than args")
             return False
 
         #Check the conditions
-        for i in range(len(self.conditions)):
-            if self.conditions[i] and not self.conditions[i].match(args[i]):
-                return False
+        if not self.conditions:
+            logging.debug("No conditions, therefore item matches")
+            return True
+        else:
+            for i in range(len(self.conditions)):
+                if self.conditions[i] and not self.conditions[i].match(args[i]):
+                    logging.debug("Item doesn't match - condition {0} ('{1}') doesn't match arg '{2}'".format(i, self.conditions[i].pattern, args[i]))
+                    return False
         
+        logging.debug("All item conditions match")
         return True
 
     def __eq__(self, other):
@@ -149,6 +169,7 @@ def build_structure(config):
     logging.info("Building templates...")
     templates = {}
     for id_, data in config["templates"].items():
+        logging.debug("Building template '{0}'".format(id_))
         try:
             templates[id_] = Template(id_, *data)
         except ConfigError as e:
@@ -158,6 +179,7 @@ def build_structure(config):
     logging.info("Building items...")
     items = {}
     for id_, data in config["items"].items():
+        logging.debug("Building item '{0}'".format(id_))
         try:
             template = templates[data[1]]
             items[id_] = Item(id_, data[0], template)
@@ -170,18 +192,20 @@ def build_structure(config):
     logging.info("Building users...")
     users = {}
     for email, item_ids in config["users"].items():
+        logging.debug("Building user '{0}'".format(email))
         user_items = []
+
         for item_id in item_ids:
             try:
                 user_items.append(items[item_id])
             except KeyError as e:
                 logging.warn("Problem with config file - Invalid item '{0}' for user '{1}'".format(item_id, email))
-        
+
+        #Check for duplicates
         if len(set(user_items)) != len(user_items):
             logging.warn("Problem with config file - Duplicate items for user '{0}'".format(email))
         
         users[email] = User(user_items)
-
     
     return users
 
@@ -197,17 +221,17 @@ def load_config():
         with open (os.path.join(HOME_DIR, CONFIG_FILE), "r") as f:
             config = json.load(f)
 
-            #Check all sections are present
+            logging.debug("Checking all config sections are present")
             if not all(k in config for k in CONFIG_REQS):
                 logging.critical("Incomplete configuration file")
                 return None
             
-            #Check all general options are present
+            logging.debug("Checking all 'general' configuration options are present")
             if not all(k in config["general"] for k in CONFIG_GEN_REQS):
                 logging.critical("Incomplete general configuration")
                 return None
             
-            #Check all server options are present
+            logging.debug("Checking all 'server' configuration options are present")
             if not all(k in config["server"] for k in CONFIG_SERVER_REQS):
                 logging.critical("Incomplete server configuration")
                 return None
@@ -222,6 +246,8 @@ def load_config():
 def generate_plaintext(conf, html):
     """Returns a plaintext version of the template"""
 
+    logging.debug("Generating a plaintext version of:\n{0}".format(html))
+
     h = html2text.HTML2Text()
 
     #Set a subset of relevant options for html2text parser
@@ -230,7 +256,7 @@ def generate_plaintext(conf, html):
             setattr(h, opt, conf[opt])
 
     ret = h.handle(html)
-    logging.debug("Generated plaintext email:\n{0}".format(ret))
+    logging.debug("Generated plaintext:\n{0}".format(ret))
     return ret
 
 def send_email(conf, server, items, args):
@@ -242,7 +268,7 @@ def send_email(conf, server, items, args):
         return
 
     #Log into the SMTP server
-    logging.info("Logging into the SMTP server...")
+    logging.info("Connecting to the SMTP server...")
 
     try:
         if server["ssl"]:
@@ -254,12 +280,15 @@ def send_email(conf, server, items, args):
         return
 
     if server["user"] and server["pass"]:
-        if server["tls"]:
-            smtp_server.ehlo()
-            smtp_server.starttls()
-            smtp_server.ehlo()
+        logging.debug("Logging into the SMTP server")
 
         try:
+            if server["tls"]:
+                logging.debug("Attempting to use TLS")
+                smtp_server.ehlo()
+                smtp_server.starttls()
+                smtp_server.ehlo()
+
             smtp_server.login(server["user"], server["pass"])
         except smtplib.SMTPException as e:
             logging.critical("Couldn't log into the SMTP server: {0}".format(e.args[1]))
@@ -268,6 +297,8 @@ def send_email(conf, server, items, args):
     logging.info("Sending email(s)...")
 
     for item, emails in items.items():
+
+        logging.debug("Setting up email object")
 
         subject, text = item.template.get_filled(args)
 
@@ -316,9 +347,9 @@ def process_args(users, args):
         
 
 def main():
-    """Entry point of the program"""
+    """Start processing"""
 
-    logging.basicConfig(format="[%(asctime)s][%(levelname)s]: %(message)s", level=logging.DEBUG)
+    logging.debug("Detected script directory: {0}".format(HOME_DIR))
 
     if len(sys.argv) == 1:
         print ("EmailNotify by pR0Ps")
@@ -333,9 +364,11 @@ def main():
         return
 
     if config["general"]["gen_plaintext"]:
+        logging.debug("Plaintext option enabled, attempting to load the 'html2text' module")
         try:
             global html2text
             import html2text
+            logging.debug("Loaded 'html2text' module successfully")
         except ImportError as e:
             logging.warning("Couldn't load 'html2text' module, no plaintext email will be generated")
             config["general"]["gen_plaintext"] = False
@@ -347,6 +380,7 @@ def main():
         
 
 if __name__ == '__main__':
+    """Entry point of the program"""
     global HOME_DIR
 
     try:
@@ -357,5 +391,5 @@ if __name__ == '__main__':
         
     #logging.basicConfig(filename=os.path.join(HOME_DIR, "EmailNotify.log"), format="[%(asctime)s][%(levelname)s]: %(message)s", level=logging.WARN)
     logging.basicConfig(format="[%(asctime)s][%(levelname)s]: %(message)s", level=logging.DEBUG)
-    
+
     main()
