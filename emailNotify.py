@@ -351,16 +351,19 @@ def main():
 
     logging.debug("Detected script directory: {0}".format(HOME_DIR))
 
+    config = load_config()
+    
     if len(sys.argv) == 1:
         print ("EmailNotify by pR0Ps")
         print ("See README.md for usage instructions")
+        if not config:
+            logging.critical("Couldn't load config data, program will not run")
         return
 
     args = sys.argv[1:]
-    config = load_config()
     
     if not config:
-        logging.critical("Couldn't load config, exiting")
+        logging.critical("Couldn't load config data, exiting")
         return
 
     if config["general"]["gen_plaintext"]:
