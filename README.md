@@ -20,28 +20,12 @@ General
 General program options
 
 The following options need to be configured:
-*    `gen_plaintext`: Generate and send a plaintext version of the template as well as the html version (`true`/`false`). (requres the [html2text](https://pypi.python.org/pypi/html2text) module)
-
-The following options are optional and only used if `gen_plaintext` is enabled:
-*    `unicode_snob`: Use Unicode characters instead of their ascii psuedo-replacements (default `false`).
-*    `escape_snob`: Escape all special characters (default `false`). Output is less readable, but avoids corner case formatting issues.
-*    `links_each_paragraph`: Put the links after each paragraph instead of at the end (default `false`).
-*    `body_width`: Wrap long lines at this position. `0` for no wrapping, default `78`.
-*    `skip_internal_links`: Don't show internal links (`href="#local-anchor"`) (default `true`).
-*    `inline_links`: Use inline, rather than reference, formatting for images and links (default `true`).
-*    `ignore_links`: Ignore all anchor tags (default `false`).
-*    `ignore_images`: Ignore all imgage tags (default `false`).
-*    `ignore_emphasis`: Ignore all emphasis tags (default `false`).
-*    `ul_item_mark`: The string to begin list items with (default `*`).
-*    `emphasis_mark`: The string to surround emphasized text with (default `_`).
-*    `strong_mark`: The string to surround bolded text with (default `**`).
+*    `gen_html`: Generate and send an HTML version of the template as well as the markdown version (`true`/`false`). (requres the [markdown](https://pypi.python.org/pypi/Markdown) module).
 
 Example:
 ```json
 "general":{
-    "gen_plaintext": true,
-    "body_width":    0,
-	"inline_links":  false
+    "gen_html": true,
 }
 ```
 
@@ -89,16 +73,16 @@ A template config has the format `id: [email_subject, template_file]`
 Config example:
 ```json
 "templates":{
-    "general": ["Incoming Notification", "general.html"],
-    "data":    ["Incoming Datafile", "data.html"],
-    "movie":   ["Incoming Movie ({1})", "movie.html"],
-    "music":   ["Incoming Music ({1})", "music.html"]
+    "general": ["Incoming Notification", "general.md"],
+    "data":    ["Incoming Datafile", "data.md"],
+    "movie":   ["Incoming Movie ({1})", "movie.md"],
+    "music":   ["Incoming Music ({1})", "music.md"]
 }
 ```
 
-Template file example (`templates/general.html`):
-```html
-General: '{0}': <em>{1}</em>, <b>{2}</b>
+Template file example (`templates/general.md`):
+```
+General: '{0}': _{1}_, __{2}__
 ```
 
 Conditions
@@ -157,9 +141,7 @@ Configuration file
 ```json
 {
     "general":{
-        "gen_plaintext": true,
-        "body_width":    0,
-	    "inline_links":  false
+        "gen_html": true,
     },
     "server":{
         "smtp":    "smtp.example.com",
@@ -172,10 +154,10 @@ Configuration file
         "fr_name": "Notifications"
     },
     "templates":{
-        "general": ["Incoming Notification", "general.html"],
-        "data":    ["Incoming Datafile", "data.html"],
-        "movie":   ["Incoming Movie ({1})", "movie.html"],
-        "music":   ["Incoming Music ({1})", "music.html"]
+        "general": ["Incoming Notification", "general.md"],
+        "data":    ["Incoming Datafile", "data.md"],
+        "movie":   ["Incoming Movie ({1})", "movie.md"],
+        "music":   ["Incoming Music ({1})", "music.md"]
     },
     "items":{
         "all":        [null, "general"],
@@ -192,23 +174,23 @@ Configuration file
 
 Template files
 --------------
-`general.html`:
-```html
-General: '{0}': <em>{1}</em>, <b>{2}</b>
+`general.md`:
+```
+General: '{0}': _{1}_, __{2}__
 ```
 
-`data.html`:
-```html
+`data.md`:
+```
 Data in file '{2}'
 ```
 
-`movie.html`:
-```html
+`movie.md`:
+```
 Movie called '{1}' at '{2}'
 ```
 
-`music.html`:
-```html
+`music.md`:
+```
 Music called '{1}' at '{2}'
 ```
 
@@ -220,7 +202,7 @@ Results
         *    Contents: Data in file: '/home/test/testing.dat'
     *    test2@example.com:
         *    Subject: Incoming Notification
-        *    Contents: General: 'n/a': <em>testing.dat</em>, <b>/home/test/testing.dat</b>
+        *    Contents: General: 'n/a': _testing.dat_, __/home/test/testing.dat__
 
 *    `./emailNotify.py "Label_movie" "My movie" "/home/test/video.mkv"`
     *    test1@example.com: Not sent an email.
@@ -234,4 +216,4 @@ Results
         *    Contents: Music called 'My Song' at '/home/test/testing.dat'
     *    test2@example.com:
         *    Subject: Incoming Notification
-        *    Contents: General: 'Label_music': <em>My Song</em>, <b>/home/test/music.mp3</b>
+        *    Contents: General: 'Label_music': _My Song_, __/home/test/music.mp3__
