@@ -18,7 +18,8 @@ ARG_PLACEHOLDER = "[NO DATA]"
 CONFIG_REQS = ("general", "server", "templates", "items", "users")
 CONFIG_GEN_REQS = ("gen_html",)
 CONFIG_SERVER_REQS = ("smtp", "user", "pass", "port", "ssl", "tls", "fr_addr", "fr_name")
-VALID_MD_OPTS = ("output_format",)
+VALID_MD_OPTS = ("output_format", "tab_length", "smart_emphasis", "lazy_ol", "safe_mode",
+                 "html_replcement_text", "enable_attributes", "extensions", "extension_configs")
 
 class ConfigError(Exception):
     pass

@@ -22,10 +22,13 @@ General program options
 The following options need to be configured:
 *    `gen_html`: Generate and send an HTML version of the template as well as the markdown version (`true`/`false`). (requres the [markdown](https://pypi.python.org/pypi/Markdown) module).
 
+Other options related to markdown processing can be set here. See the [Markdown documentation](http://pythonhosted.org/Markdown/reference.html#markdown) for a list of options.
+
 Example:
 ```json
 "general":{
     "gen_html": true,
+    "output_format": "html4"
 }
 ```
 
@@ -142,6 +145,7 @@ Configuration file
 {
     "general":{
         "gen_html": true,
+        "output_format": "html4"
     },
     "server":{
         "smtp":    "smtp.example.com",
