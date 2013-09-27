@@ -9,19 +9,16 @@ import os
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-html2text = None
+markdown = None
 
 CONFIG_FILE = "config.dat"
 TEMPLATE_DIR = "templates"
 ARG_PLACEHOLDER = "[NO DATA]"
 
-VALID_H2T_OPTS = ("unicode_snob", "escape_snob", "links_each_paragraph", "body_width",
-                "skip_internal_links", "inline_links", "ignore_links","ignore_images",
-                "ignore_emphasis", "ul_item_mark", "emphasis_mark", "strong_mark")
-
 CONFIG_REQS = ("general", "server", "templates", "items", "users")
-CONFIG_GEN_REQS = ["gen_plaintext"]
+CONFIG_GEN_REQS = ("gen_html",)
 CONFIG_SERVER_REQS = ("smtp", "user", "pass", "port", "ssl", "tls", "fr_addr", "fr_name")
+VALID_MD_OPTS = ("output_format",)
 
 class ConfigError(Exception):
     pass
@@ -54,13 +51,13 @@ class Template(object):
         logging.debug("Checking if template '{0}' is valid".format(self.id_))
         for i in range(2):
             for x in string.Formatter().parse((self.subject, self.contents)[i]):
-                #x[1] is the name of each placeholder
+                # x[1] is the name of each placeholder
                 try:
                     int(x[1])
                 except ValueError:
                     raise ConfigError("Invalid placeholder '{{{0}}}' in template {1}".format(x[1], ("subject", "file")[i]))
                 except TypeError:
-                    #x[1] is None, this is fine
+                    # x[1] is None, this is fine
                     pass
 
     def _num_placeholders(self):
@@ -76,7 +73,7 @@ class Template(object):
 
         temp_args = args[:]
 
-        #Extend the args to match the number of placeholders
+        # Extend the args to match the number of placeholders
         if to_add > 0:
             logging.warning("Inserting placeholder '{0}' into template '{1}' ({2} too few arguments provided).".format(ARG_PLACEHOLDER, self.id_, to_add))
             temp_args.extend(to_add * [ARG_PLACEHOLDER])
@@ -114,14 +111,14 @@ class Item(object):
     def does_match(self, args):
         """Returns true if this item matches the arguments"""
         
-        logging.debug("Checking if item matches. Conditions: {0} Args: {1}".format([p.pattern for p in self.conditions], args))
+        logging.debug("Checking if item matches. Conditions: {0} Args: {1}".format([p.pattern for p in self.conditions if p], args))
 
-        #Less args than conditions, can't match
+        # Less args than conditions, can't match
         if len(args) < len(self.conditions):
             logging.debug("Item doesn't match - more conditions than args")
             return False
 
-        #Check the conditions
+        # Check the conditions
         if not self.conditions:
             logging.debug("No conditions, therefore item matches")
             return True
@@ -165,7 +162,7 @@ def build_structure(config):
     logging.info("Building data structure...")
     
 
-    #build templates
+    # Build templates
     logging.info("Building templates...")
     templates = {}
     for id_, data in config["templates"].items():
@@ -175,7 +172,7 @@ def build_structure(config):
         except ConfigError as e:
             logging.warn("Problem with config file - {0}. Skipping template '{1}'".format(e, id_))
 
-    #build items
+    # Build items
     logging.info("Building items...")
     items = {}
     for id_, data in config["items"].items():
@@ -188,7 +185,7 @@ def build_structure(config):
         except ConfigError as e:
             logging.warn("Problem with config file - {0}. Skipping item '{1}'".format(e, id_))
 
-    #build users
+    # Build users
     logging.info("Building users...")
     users = {}
     for email, item_ids in config["users"].items():
@@ -201,7 +198,7 @@ def build_structure(config):
             except KeyError as e:
                 logging.warn("Problem with config file - Invalid item '{0}' for user '{1}'".format(item_id, email))
 
-        #Check for duplicates
+        # Check for duplicates
         if len(set(user_items)) != len(user_items):
             logging.warn("Problem with config file - Duplicate items for user '{0}'".format(email))
         
@@ -243,31 +240,25 @@ def load_config():
         logging.critical("Couldn't parse JSON, check the config file: {0}".format(e))
     return None
 
-def generate_plaintext(conf, html):
-    """Returns a plaintext version of the template"""
+def generate_html(conf, md):
+    """Returns an HTML version of the template"""
 
-    logging.debug("Generating a plaintext version of:\n{0}".format(html))
+    logging.debug("Generating an HTML version of:\n{0}".format(md))
 
-    h = html2text.HTML2Text()
-
-    #Set a subset of relevant options for html2text parser
-    for opt in VALID_H2T_OPTS:
-        if opt in conf:
-            setattr(h, opt, conf[opt])
-
-    ret = h.handle(html)
-    logging.debug("Generated plaintext:\n{0}".format(ret))
+    # Generate the markdown using only valid options from the config
+    ret = markdown.markdown(md, **{k:v for k, v in conf.items() if k in VALID_MD_OPTS})
+    logging.debug("Generated HTML:\n{0}".format(ret))
     return ret
 
 def send_email(conf, server, items, args):
     """Sends the email"""
 
-    #Check if actually sending anything
+    # Check if actually sending anything
     if not items:
         logging.info("No emails to send")
         return
 
-    #Log into the SMTP server
+    # Log into the SMTP server
     logging.info("Connecting to the SMTP server...")
 
     try:
@@ -305,11 +296,12 @@ def send_email(conf, server, items, args):
         msg = MIMEMultipart('alternative')
         msg["Subject"] = subject
         msg["From"] = "{0} <{1}>".format(server["fr_name"], server["fr_addr"])
+        msg.add_header("reply-to", server["fr_addr"])
         
-        #Add text - According to RFC 2046 the last attached part is preferred (HTML)
-        if conf["gen_plaintext"]:
-            msg.attach(MIMEText(generate_plaintext(conf, text).encode('utf-8'), 'plain', _charset='utf-8'))
-        msg.attach(MIMEText(text.encode('utf-8'), 'html', _charset='utf-8'))
+        # Add text - According to RFC 2046 the last attached part is preferred (HTML)
+        msg.attach(MIMEText(text.encode('utf-8'), 'plain', _charset='utf-8'))
+        if conf["gen_html"]:
+            msg.attach(MIMEText(generate_html(conf, text).encode('utf-8'), 'html', _charset='utf-8'))
 
         logging.info("Sending template '{0}' to '{1}'...".format(item.template.id_, ", ".join(emails)))
 
@@ -366,15 +358,15 @@ def main():
         logging.critical("Couldn't load config data, exiting")
         return
 
-    if config["general"]["gen_plaintext"]:
-        logging.debug("Plaintext option enabled, attempting to load the 'html2text' module")
+    if config["general"]["gen_html"]:
+        logging.debug("Markdown to HTML option enabled, attempting to load the 'markdown' module")
         try:
-            global html2text
-            import html2text
-            logging.debug("Loaded 'html2text' module successfully")
+            global markdown
+            import markdown
+            logging.debug("Loaded 'markdown' module successfully")
         except ImportError as e:
-            logging.warning("Couldn't load 'html2text' module, no plaintext email will be generated")
-            config["general"]["gen_plaintext"] = False
+            logging.warning("Couldn't load 'markdown' module, no HTML email will be generated")
+            config["general"]["gen_html"] = False
 
     users = build_structure(config)
     to_send = process_args(users, args)
