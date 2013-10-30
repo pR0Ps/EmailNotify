@@ -4,6 +4,7 @@ import json
 import sys
 import logging
 import string
+import datetime
 import re
 import os
 import smtplib
@@ -16,7 +17,7 @@ TEMPLATE_DIR = "templates"
 ARG_PLACEHOLDER = "[NO DATA]"
 
 CONFIG_REQS = ("general", "server", "templates", "items", "users")
-CONFIG_GEN_REQS = ("gen_html",)
+CONFIG_GEN_REQS = ("gen_html", "append_date")
 CONFIG_SERVER_REQS = ("smtp", "user", "pass", "port", "ssl", "tls", "fr_addr", "fr_name")
 VALID_MD_OPTS = ("output_format", "tab_length", "smart_emphasis", "lazy_ol", "safe_mode",
                  "html_replcement_text", "enable_attributes", "extensions", "extension_configs")
@@ -295,7 +296,10 @@ def send_email(conf, server, items, args):
         subject, text = item.template.get_filled(args)
 
         msg = MIMEMultipart('alternative')
-        msg["Subject"] = subject
+        if conf["append_date"]:
+            msg["Subject"] = "{0} - {1}".format(subject, datetime.datetime.now().strftime("%b %d %H:%M:%S"))
+        else:
+            msg["Subject"] = subject
         msg["From"] = "{0} <{1}>".format(server["fr_name"], server["fr_addr"])
         msg.add_header("reply-to", server["fr_addr"])
         
@@ -349,8 +353,10 @@ def main():
     if len(sys.argv) == 1:
         print ("EmailNotify by pR0Ps")
         print ("See README.md for usage instructions")
-        if not config:
-            logging.critical("Couldn't load config data, program will not run")
+        if config:
+            print("Config data was loaded successfully")
+        else:
+            print("Couldn't load config data, program will not run")
         return
 
     args = sys.argv[1:]
