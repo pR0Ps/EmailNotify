@@ -20,16 +20,15 @@ General
 -------
 General program options are stored in a file called `config.json` in the config directory.
 
-The following options need to be configured:
-*   `gen_html`: Generate and send an HTML version of the template as well as the markdown version (`true`/`false`). (requres the [markdown](https://pypi.python.org/pypi/Markdown) module).
-*   `append_date`: Forces emails to be displayed in seperate threads by appending the current date and time to the subject line (`true`/`false`).
+The following optional parameters can be configured (defaults selected with `[]`):
+*   `gen_html`: Generate and send an HTML version of the template as well as the markdown version (`[true]`/`false`). (requres the [markdown](https://pypi.python.org/pypi/Markdown) package).
+*   `append_date`: Forces emails to be displayed in seperate threads by appending the current date and time to the subject line (`true`/`[false]`).
 
 Other options related to markdown processing can be set here. See the [Markdown documentation](http://pythonhosted.org/Markdown/reference.html#markdown) for a list of options.
 
 Example:
 ```json
 "general":{
-    "gen_html": true,
     "append_date": true,
     "output_format": "html4"
 }

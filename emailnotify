@@ -17,11 +17,15 @@ CONFIG_FILE = os.path.join(CONFIG_DIR, "config.json")
 TEMPLATE_DIR = os.path.join(CONFIG_DIR, "templates")
 ARG_PLACEHOLDER = "[NO DATA]"
 
-CONFIG_REQS = ("general", "server", "templates", "items", "users")
-CONFIG_GEN_REQS = ("gen_html", "append_date")
+CONFIG_REQS = ("server", "templates", "items", "users")
 CONFIG_SERVER_REQS = ("smtp", "user", "pass", "port", "ssl", "tls", "fr_addr", "fr_name")
 VALID_MD_OPTS = ("output_format", "tab_length", "smart_emphasis", "lazy_ol", "safe_mode",
                  "html_replcement_text", "enable_attributes", "extensions", "extension_configs")
+
+CONFIG_GEN_DEFAULTS = {
+    "gen_html": True,
+    "append_date": False,
+}
 
 class ConfigError(Exception):
     pass
@@ -225,11 +229,11 @@ def load_config():
             if not all(k in config for k in CONFIG_REQS):
                 logging.critical("Incomplete configuration file")
                 return None
-            
-            logging.debug("Checking all 'general' configuration options are present")
-            if not all(k in config["general"] for k in CONFIG_GEN_REQS):
-                logging.critical("Incomplete general configuration")
-                return None
+
+            # Fill in default options
+            genopts = config.get("general", {})
+            config["general"] = CONFIG_GEN_DEFAULTS
+            config["general"].update(genopts)
             
             logging.debug("Checking all 'server' configuration options are present")
             if not all(k in config["server"] for k in CONFIG_SERVER_REQS):
