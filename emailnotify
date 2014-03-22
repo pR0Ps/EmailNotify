@@ -69,7 +69,7 @@ class Template(object):
 
     def _num_placeholders(self):
         """Returns the number of placeholders needed to fill in the template"""
-        return max({int(x[1]) for x in string.Formatter().parse(self.contents + self.subject) if x[1]}) + 1
+        return max(int(x[1]) for x in string.Formatter().parse(self.contents + self.subject) if x[1]) + 1
 
     def get_filled(self, args):
         """Returns the filled out template as a (subject, contents) tuple"""
