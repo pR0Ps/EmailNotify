@@ -297,7 +297,7 @@ def send_email(conf, server, items, args):
 
         msg = MIMEMultipart('alternative')
         if conf["append_date"]:
-            msg["Subject"] = "{0} - {1}".format(subject, datetime.datetime.now().strftime("%b %d %H:%M:%S"))
+            msg["Subject"] = "{0} - {1}".format(subject, datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
         else:
             msg["Subject"] = subject
         msg["From"] = "{0} <{1}>".format(server["fr_name"], server["fr_addr"])
