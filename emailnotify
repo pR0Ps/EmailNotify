@@ -12,8 +12,9 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 markdown = None
 
-CONFIG_FILE = "config.dat"
-TEMPLATE_DIR = "templates"
+CONFIG_DIR = os.path.join(os.environ['HOME'], '.config', 'emailnotify')
+CONFIG_FILE = os.path.join(CONFIG_DIR, "config.json")
+TEMPLATE_DIR = os.path.join(CONFIG_DIR, "templates")
 ARG_PLACEHOLDER = "[NO DATA]"
 
 CONFIG_REQS = ("general", "server", "templates", "items", "users")
@@ -40,7 +41,7 @@ class Template(object):
         try:
             path = os.path.join(TEMPLATE_DIR, filename)
             logging.debug("Loading template '{0}' from file '{1}'".format(self.id_, path))
-            with open (os.path.join(HOME_DIR, path), "r") as f:
+            with open (path, "r") as f:
                 self.contents = f.read()
         except EnvironmentError as e:
             raise ConfigError("Couldn't load template '{0}': {1}".format(self.id_, e))
@@ -217,7 +218,7 @@ def load_config():
     logging.info("Loading the configuration file...")
 
     try:
-        with open (os.path.join(HOME_DIR, CONFIG_FILE), "r") as f:
+        with open (CONFIG_FILE, "r") as f:
             config = json.load(f)
 
             logging.debug("Checking all config sections are present")
@@ -346,7 +347,7 @@ def process_args(users, args):
 def main():
     """Start processing"""
 
-    logging.debug("Detected script directory: {0}".format(HOME_DIR))
+    logging.debug("Detected script directory: {0}".format(CONFIG_DIR))
 
     config = load_config()
     
@@ -383,15 +384,8 @@ def main():
 
 if __name__ == '__main__':
     """Entry point of the program"""
-    global HOME_DIR
 
-    try:
-        HOME_DIR = os.path.dirname(os.path.abspath(__file__))
-    except EnvironmentError as e:
-        print("WARNING: Couldn't get the directory the script is in: {0}".format(e))
-        HOME_DIR = "."
-        
-    #logging.basicConfig(filename=os.path.join(HOME_DIR, "EmailNotify.log"), format="[%(asctime)s][%(levelname)s]: %(message)s", level=logging.WARN)
+    #logging.basicConfig(filename=os.path.join(CONFIG_DIR, "emailnotify.log"), format="[%(asctime)s][%(levelname)s]: %(message)s", level=logging.WARN)
     logging.basicConfig(format="[%(asctime)s][%(levelname)s]: %(message)s", level=logging.DEBUG)
 
     main()

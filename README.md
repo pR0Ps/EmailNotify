@@ -3,7 +3,6 @@ EmailNotify
 
 Allows for sending customizable email notifications.
 
-
 Usage
 =====
 Call the script with as many parameters as needed.
@@ -15,9 +14,11 @@ Format specification: `./emailNotify.py [data, ...]`
 Configuration
 =============
 
+All configuration files need to be set up in `~/.config/emailnotify/` prior to running the program.
+
 General
----------------------
-General program options
+-------
+General program options are stored in a file called `config.json` in the config directory.
 
 The following options need to be configured:
 *   `gen_html`: Generate and send an HTML version of the template as well as the markdown version (`true`/`false`). (requres the [markdown](https://pypi.python.org/pypi/Markdown) module).
@@ -35,7 +36,7 @@ Example:
 ```
 
 Server
---------------------
+------
 The server section holds the data needed to actually send the email.
 
 The following options need to be configured:
@@ -66,7 +67,7 @@ Templates
 ---------
 A template gets filled in using the arguments passed to program, then emailed to users.
 
-Due to their length, the contents of the templates are stored in individual files in the `templates` subdirectory.
+Template files are stored as individual files in a `templates` subdirectory of the config directory.
 
 Formatting:
 *   Numbers wrapped in curly braces (`{}`) in the subject or contents will be replaced with the corresponding argument.
