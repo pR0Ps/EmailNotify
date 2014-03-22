@@ -70,7 +70,7 @@ Due to their length, the contents of the templates are stored in individual file
 
 Formatting:
 *   Numbers wrapped in curly braces (`{}`) in the subject or contents will be replaced with the corresponding argument.
-*   This replacement is subject to normal Python formating syntax.
+*   This replacement is done by the [Python string formating function](http://docs.python.org/2/library/string.html#formatstrings).
 *   For example, a template of `{0} - {2:=^10} - {1:.3}` becomes `aaaaaa - ==cccccc== - bbb` when given arguments of `aaaaaa bbbbbb cccccc`.
 *   If there aren't enough arguments, the string `[NO DATA]` is substituted.
 
