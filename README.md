@@ -5,11 +5,11 @@ Allows for sending customizable email notifications.
 
 Usage
 =====
-Call the script with as many parameters as needed.
+Call the script with as many positional parameters as needed.
 All the parameters will be checked against the conditions of the items.
 If the conditions of the items match, an email will be sent out.
 
-Format specification: `./emailNotify.py [data, ...]`
+Format specification: `emailnotify [data, ...]`
 
 Configuration
 =============
@@ -204,7 +204,7 @@ Music called '{1}' at '{2}'
 
 Results
 -------
-*   `./emailNotify.py "n/a" "testing.dat" "/home/test/testing.dat"`
+*   `emailnotify "n/a" "testing.dat" "/home/test/testing.dat"`
     *   test1@example.com:
         *   Subject: Incoming Datafile - Jan 01 00:00:00
         *   Contents: Data in file: '/home/test/testing.dat'
@@ -212,13 +212,13 @@ Results
         *   Subject: Incoming Notification - Jan 01 00:00:00
         *   Contents: General: 'n/a': _testing.dat_, __/home/test/testing.dat__
 
-*   `./emailNotify.py "Label_movie" "My movie" "/home/test/video.mkv"`
+*   `emailnotify "Label_movie" "My movie" "/home/test/video.mkv"`
     *   test1@example.com: Not sent an email.
     *   test2@example.com:
         *   Subject: Incoming Movie (My Movie) - Jan 01 00:00:00
         *   Contents: Movie called 'My Movie' at '/home/test/video.mkv'
 
-*   `./emailNotify.py "Label_music" "My Song" "/home/test/music.mp3"`
+*   `emailnotify "Label_music" "My Song" "/home/test/music.mp3"`
     *   test1@example.com:
         *   Subject: Incoming Music (My Song) - Jan 01 00:00:00
         *   Contents: Music called 'My Song' at '/home/test/testing.dat'
