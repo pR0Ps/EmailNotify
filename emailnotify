@@ -114,10 +114,10 @@ class Item(object):
         if not any(self.conditions):
             logging.debug("No conditions found")
             self.conditions = []
-        
+
     def does_match(self, args):
         """Returns true if this item matches the arguments"""
-        
+
         logging.debug("Checking if item matches. Conditions: {0} Args: {1}".format([p.pattern for p in self.conditions if p], args))
 
         # Less args than conditions, can't match
@@ -131,10 +131,10 @@ class Item(object):
             return True
         else:
             for i in range(len(self.conditions)):
-                if self.conditions[i] and not self.conditions[i].match(args[i]):
+                if self.conditions[i] and not self.conditions[i].fullmatch(args[i]):
                     logging.debug("Item doesn't match - condition {0} ('{1}') doesn't match arg '{2}'".format(i, self.conditions[i].pattern, args[i]))
                     return False
-        
+
         logging.debug("All item conditions match")
         return True
 
@@ -165,9 +165,9 @@ def build_structure(config):
     Builds the data structure.
     Returns a list of users.
     """
-    
+
     logging.info("Building data structure...")
-    
+
 
     # Build templates
     logging.info("Building templates...")
@@ -185,7 +185,11 @@ def build_structure(config):
     for id_, data in config["items"].items():
         logging.debug("Building item '{0}'".format(id_))
         try:
-            template = templates[data[1]]
+            template_id = data[1]
+            if template_id is not None:
+                template = templates[template_id]
+            else:
+                template = None
             items[id_] = Item(id_, data[0], template)
         except KeyError as e:
             logging.warn("Problem with config file - Invalid template '{0}'. Skipping item '{1}'".format(data[1], id_))
@@ -208,9 +212,9 @@ def build_structure(config):
         # Check for duplicates
         if len(set(user_items)) != len(user_items):
             logging.warn("Problem with config file - Duplicate items for user '{0}'".format(email))
-        
+
         users[email] = User(user_items)
-    
+
     return users
 
 def load_config():
@@ -234,7 +238,7 @@ def load_config():
             genopts = config.get("general", {})
             config["general"] = CONFIG_GEN_DEFAULTS
             config["general"].update(genopts)
-            
+
             logging.debug("Checking all 'server' configuration options are present")
             if not all(k in config["server"] for k in CONFIG_SERVER_REQS):
                 logging.critical("Incomplete server configuration")
@@ -259,6 +263,9 @@ def generate_html(conf, md):
 
 def send_email(conf, server, items, args):
     """Sends the email"""
+
+    # Remove null templates:
+    items = {k: v for k, v in items.items() if k.template is not None}
 
     # Check if actually sending anything
     if not items:
@@ -307,7 +314,7 @@ def send_email(conf, server, items, args):
             msg["Subject"] = subject
         msg["From"] = "{0} <{1}>".format(server["fr_name"], server["fr_addr"])
         msg.add_header("reply-to", server["fr_addr"])
-        
+
         # Add text - According to RFC 2046 the last attached part is preferred (HTML)
         msg.attach(MIMEText(text.encode('utf-8'), 'plain', _charset='utf-8'))
         if conf["gen_html"]:
@@ -346,7 +353,7 @@ def process_args(users, args):
             to_send[item].append(email)
 
     return to_send
-        
+
 
 def main():
     """Start processing"""
@@ -354,7 +361,7 @@ def main():
     logging.debug("Detected script directory: {0}".format(CONFIG_DIR))
 
     config = load_config()
-    
+
     if len(sys.argv) == 1:
         print ("EmailNotify by pR0Ps")
         print ("See README.md for usage instructions")
@@ -365,7 +372,7 @@ def main():
         return
 
     args = sys.argv[1:]
-    
+
     if not config:
         logging.critical("Couldn't load config data, exiting")
         return
@@ -384,7 +391,7 @@ def main():
     to_send = process_args(users, args)
 
     send_email(config["general"], config["server"], to_send, args)
-        
+
 
 if __name__ == '__main__':
     """Entry point of the program"""
